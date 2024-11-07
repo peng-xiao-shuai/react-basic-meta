@@ -7,6 +7,7 @@
  */
 
 import type { InitThree } from '.';
+import { ANIMATION } from './constant';
 
 /**
  * 切换动画
@@ -27,22 +28,18 @@ export function switchAction(this: InitThree, name: number | string): void {
     return;
   }
 
-  // 定义淡出淡出时长
-  const duration = 0.5;
   const previousAction = this.activeAction;
 
   if (!this.mixer || !this.mixer.clipAction) return;
 
   this.activeAction = this.mixer.clipAction(animation);
   // 进行淡出
-  previousAction?.fadeOut(duration);
+  previousAction?.fadeOut(ANIMATION.CONNECTION_DURATION);
 
   this.activeAction
     .reset()
     .setEffectiveTimeScale(1)
     .setEffectiveWeight(1)
-    .fadeIn(duration)
+    .fadeIn(ANIMATION.CONNECTION_DURATION)
     .play();
 }
-
-export const a = 1;
