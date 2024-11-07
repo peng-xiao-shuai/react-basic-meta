@@ -7,6 +7,7 @@
  */
 import * as THREE from 'three';
 import type { InitThree } from '.';
+import { MOTION } from './constant';
 
 type CycleKeys = 'w' | 's' | 'a' | 'd';
 export interface Cycle {
@@ -19,14 +20,12 @@ export interface Cycle {
  * @param {THREE.Group} personModel 人物模型
  * @param {} cycle 执行周期
  */
-export const pressKeyOperate = (
-  personModel: THREE.Group,
-  cycle: Cycle
-): void => {
+export function pressKeyOperate(personModel: THREE.Group, cycle: Cycle) {
+  // 是否走路动画
   let isWalk = false;
   window.addEventListener('keydown', (e) => {
     // 匹配按键，调用移动函数（如果有的话）
-    if (['w', 's', 'a', 'd'].includes(e.key)) {
+    if (['KeyW', 'Keys', 'KeyA', 'KeyD'].includes(e.code)) {
       if (!isWalk) {
         isWalk = true;
 
@@ -40,7 +39,7 @@ export const pressKeyOperate = (
       if (cycle.move) cycle.move(e.key as CycleKeys);
 
       // 控制行走
-      personModel.translateZ(0.2);
+      personModel.translateZ(MOTION.MOVE_SPEED);
     }
   });
   window.addEventListener('keyup', (e) => {
@@ -56,7 +55,7 @@ export const pressKeyOperate = (
       // )
     }
   });
-};
+}
 
 /**
  * 根据按键 a、s、d 获取转向方向
@@ -124,8 +123,66 @@ export function walk(this: InitThree, cameraDirection: THREE.Vector3): void {
     sanitisedAngle = angleToRotate + 2 * Math.PI;
   }
 
-  // 旋转模型面向相机的方向 0.2 控制转向速度。越大越快
+  // 旋转模型面向相机的方向 MOTION.STEERING_SPEED 控制转向速度。越大越快
   this.personModel?.scene.rotateY(
-    Math.max(-0.2, Math.min(sanitisedAngle, 0.2))
+    Math.max(
+      -MOTION.STEERING_SPEED,
+      Math.min(sanitisedAngle, MOTION.STEERING_SPEED)
+    )
   );
+}
+
+/**
+ * 跳跃模块
+ */
+export function jump(this: InitThree) {
+  // 初始化
+  this.jumpData = {
+    floorRayPause: false,
+    floorTopPosition: 0,
+    updateJump: () => {},
+  };
+  let velocity = 0;
+  let isJumping = false; // 添加跳跃状态标志
+  /**
+   * 开始跳跃
+   */
+  const start = () => {
+    // 使用 this.jumpData.floorTopPosition 作为地面高度参考
+    if (
+      !isJumping &&
+      this.personModel!.scene.position.y <= this.jumpData.floorTopPosition
+    ) {
+      velocity = MOTION.JUMP_VELOCITY;
+      isJumping = true; // 设置跳跃状态
+      this.jumpData.floorRayPause = true;
+    }
+  };
+
+  const update = () => {
+    if (isJumping) {
+      const deltaTime = this.clock.getDelta(); // 使用类的 clock 而不是创建新的
+
+      velocity += MOTION.JUMP_GRAVITY * deltaTime * MOTION.JUMP_ACCELERATION;
+      this.personModel!.scene.position.y += velocity * deltaTime;
+
+      // 检查是否落地
+      if (
+        this.personModel!.scene.position.y <= this.jumpData.floorTopPosition
+      ) {
+        isJumping = false;
+        this.jumpData.floorRayPause = false;
+        velocity = 0;
+        this.personModel!.scene.position.y = this.jumpData.floorTopPosition;
+      }
+    }
+  };
+
+  this.jumpData.updateJump = update;
+  // 添加跳跃控制
+  document.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') {
+      start();
+    }
+  });
 }
