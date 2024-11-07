@@ -8,13 +8,11 @@
 import * as THREE from 'three';
 import { GLTF, OrbitControls } from 'three/addons';
 import { createRaycaster, loadModel, unloadModel } from './other';
-import { pressKeyOperate, getKeyDirection, walk } from './action';
+import { pressKeyOperate, getKeyDirection, walk, jump } from './action';
 import { switchAction } from './animation';
+import { MOTION, RADIAL } from './constant';
 
-export const a: number = 1;
-
-const RAY_ORIGIN_HEIGHT: number = 10; // 地形检测射线的起始点高度
-
+let arrowHelper: null | THREE.ArrowHelper;
 interface InitThreeParams {
   id: string;
 }
@@ -30,20 +28,65 @@ export class InitThree {
   mixer: THREE.AnimationMixer | null;
   // actions: Record<string, any>; // 暂时没用到
   activeAction: THREE.AnimationAction | null;
+  /**
+   * requestAnimationFrame id, 用于停止
+   */
   frameId: number;
+  /**
+   * 帧数之间时间
+   */
   clock: THREE.Clock;
+  /**
+   * 人物模型包含动画数据
+   */
   personModel: GLTF | null;
+  /**
+   * 场景模型
+   */
   sceneModel: GLTF | null;
+  /**
+   * 障碍地形模型
+   */
   obstacleModel: GLTF | null;
+  /**
+   * 分辨率
+   */
   devicePixelRatio: number;
+  /**
+   * 存储地板数据
+   */
   floorMesh: THREE.Mesh[];
+  /**
+   * 碰撞的障碍物
+   */
   collisionMesh: THREE.Mesh[];
+  /**
+   * 是否碰撞
+   */
   isCollision: boolean;
+
+  // 添加新的属性
+  boundingBox: THREE.Box3 | null;
+  boxHelper: THREE.Box3Helper | null;
+  // @ts-expect-error 此数据在 jump 函数中初始化。floorRayPause在 render 初始化
+  jumpData: {
+    /**
+     * 跳跃时暂停射线
+     */
+    floorRayPause: boolean;
+    /**
+     * 地板位置 =》 起跳位置
+     */
+    floorTopPosition: number;
+    /**
+     * 跳跃更新函数
+     */
+    updateJump: () => void;
+  };
   updateSize: () => void;
 
   constructor(params: InitThreeParams) {
     if (!params.id) console.error('未传递id');
-
     this.params = params;
     this.container = document.getElementById(this.params.id) as HTMLElement;
 
@@ -51,6 +94,9 @@ export class InitThree {
       w: this.container.clientWidth || window.innerWidth,
       h: this.container.clientHeight || window.innerHeight,
     };
+
+    this.boundingBox = null;
+    this.boxHelper = null;
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -66,19 +112,12 @@ export class InitThree {
     this.mixer = null;
     // this.actions = {};
     this.activeAction = null;
-    // requestAnimationFrame id, 用于停止
     this.frameId = 0;
-    // 帧数之间时间
     this.clock = new THREE.Clock();
-    // 人物
     this.personModel = null;
-    // 场景
     this.sceneModel = null;
-    // 障碍地形
     this.obstacleModel = null;
-    // 分辨率
     this.devicePixelRatio = window.devicePixelRatio || 1;
-    // 存储地板数据
     this.floorMesh = [];
     this.collisionMesh = [];
     this.isCollision = false;
@@ -146,7 +185,7 @@ export class InitThree {
       data.scene.visible = false;
       // 设置阴影
       data.scene.castShadow = true;
-      this.scene!.add(this.sceneModel.scene);
+      this.scene?.add(this.sceneModel.scene);
     });
   }
 
@@ -168,6 +207,7 @@ export class InitThree {
   }
 
   /**
+   * 加载人物模型
    * @param {string} modeName 模型文件名称
    */
   load(modeName: string) {
@@ -176,6 +216,12 @@ export class InitThree {
       this.personModel = data;
       const personMesh = data.scene;
 
+      this.boundingBox = new THREE.Box3().setFromObject(personMesh);
+      this.boxHelper = new THREE.Box3Helper(
+        this.boundingBox,
+        new THREE.Color(0xffff00)
+      );
+      this.scene?.add(this.boxHelper);
       this.scene?.add(this.personModel.scene);
       /**
        * playerMesh.add(this.camera)
@@ -192,16 +238,16 @@ export class InitThree {
       );
 
       /**
-       * 按键转向模块
+       * 按键操作模块
        */
-      pressKeyOperate(this.personModel.scene, {
+      pressKeyOperate.call(this, this.personModel.scene, {
         move: (key) => {
           // 执行转向模块
           const cameraDirection = getKeyDirection.call(this, key);
           walk.call(this, cameraDirection);
 
           if (this.isCollision) {
-            this.personModel?.scene.translateZ(-0.2);
+            this.personModel?.scene.translateZ(-MOTION.MOVE_SPEED);
           }
         },
         down: () => {
@@ -218,6 +264,8 @@ export class InitThree {
       this.activeAction.clampWhenFinished = true;
       // this.activeAction.loop = THREE.LoopOnce
       this.activeAction.play();
+
+      jump.call(this);
     });
   }
 
@@ -227,26 +275,42 @@ export class InitThree {
 
   unload() {
     unloadModel.call(this);
+    this.container.removeChild(this.renderer.domElement);
   }
 
   render() {
     this.frameId = requestAnimationFrame(this.render.bind(this));
 
     if (this.personModel) {
+      // 更新跳跃
+      if (this.jumpData.updateJump) this.jumpData.updateJump();
+
+      // 更新边界框
+      if (this.boundingBox && this.boxHelper)
+        this.boundingBox.setFromObject(this.personModel.scene);
+
       const { position } = this.personModel.scene;
       // 发送人物垂直射线，使其人物一直在地板上
       const intersect = createRaycaster(
         this.personModel.scene.position
           .clone()
-          .setY(position.y + RAY_ORIGIN_HEIGHT),
+          .setY(position.y + RADIAL.FLOOR_RAY_ORIGIN_HEIGHT),
         new THREE.Vector3(0, -1, 0),
         this.floorMesh
       );
 
       // 设置人物模型 Y 位置
       if (intersect?.distance) {
-        const offsetHeight = intersect.distance - RAY_ORIGIN_HEIGHT;
-        position.y -= offsetHeight;
+        const offsetHeight =
+          intersect.distance - RADIAL.FLOOR_RAY_ORIGIN_HEIGHT;
+
+        // 设置地板位置数据
+        this.jumpData.floorTopPosition = position.y - offsetHeight;
+
+        // 跳跃时暂停将模型y轴贴地
+        if (!this.jumpData.floorRayPause) {
+          position.y -= offsetHeight;
+        }
       }
 
       // 确保相机始终看向模型
@@ -265,25 +329,26 @@ export class InitThree {
         direction.normalize().negate(),
         this.collisionMesh,
         (ray) => {
-          ray.params.Line.threshold = 5;
-          ray.far = 20;
+          ray.params.Line.threshold = RADIAL.THRESHOLD;
+          ray.far = RADIAL.FAR;
 
-          // // 辅助射线线
-          // if (arrowHelper) this.scene.remove(arrowHelper)
-          // // 创建一个ArrowHelper来可视化射线
-          // arrowHelper = new THREE.ArrowHelper(
-          //   ray.ray.direction, // 射线的方向
-          //   ray.ray.origin, // 射线的起点
-          //   ray.far, // 射线的长度
-          //   0xff0000 // 射线的颜色，这里使用红色
-          // )
-          // // 将这个ArrowHelper添加到场景中
-          // this.scene.add(arrowHelper)
+          // 辅助射线线
+          if (arrowHelper) this.scene?.remove(arrowHelper);
+          // 创建一个ArrowHelper来可视化射线
+          arrowHelper = new THREE.ArrowHelper(
+            ray.ray.direction, // 射线的方向
+            ray.ray.origin, // 射线的起点
+            ray.far, // 射线的长度
+            0xff0000 // 射线的颜色，这里使用红色
+          );
         }
       );
 
       if (intersect?.distance) {
-        this.isCollision = intersect.distance < 3;
+        arrowHelper?.setLength(intersect?.distance);
+        // 将这个ArrowHelper添加到场景中
+        this.scene?.add(arrowHelper!);
+        this.isCollision = intersect.distance < RADIAL.MIN_DISTANCE_TO_OBJECT;
       }
     }
 
