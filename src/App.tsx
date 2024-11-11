@@ -1,24 +1,22 @@
 import { useEffect } from 'react';
 import './App.css';
 import { InitThree } from './utils';
+// import { InitThree } from './utils/jump';
+import { debounce } from './utils/debounce-throttle';
 
 let model: InitThree;
-let init = true;
 function App() {
   useEffect(() => {
-    if (init) {
-      init = false;
-      return;
-    }
-    model = new InitThree({
-      id: 'scene',
+    debounce(() => {
+      model = new InitThree({
+        id: 'scene',
+      });
+      model.init();
+      console.log(model);
     });
-    model.init();
-    model.load('panda.glb');
-    console.log(model);
 
     return () => {
-      model?.unload();
+      // model?.unload();
     };
   }, []);
 
