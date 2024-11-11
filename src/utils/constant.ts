@@ -23,15 +23,15 @@ export const MOTION = {
   /**
    * 跳跃重力。越大重力越小
    */
-  JUMP_GRAVITY: -8,
+  JUMP_GRAVITY: -5,
   /**
    * 跳跃速度。越大跳跃越高
    */
-  JUMP_VELOCITY: 10,
+  JUMP_VELOCITY: 18,
   /**
    * 跳跃加速度
    */
-  JUMP_ACCELERATION: 3,
+  JUMP_ACCELERATION: 5,
 };
 
 /**
@@ -55,7 +55,7 @@ export const RADIAL = {
   /**
    * 辅助射线初始长度
    */
-  FAR: 20,
+  FAR: 10,
   /**
    * 辅助射线宽度
    */

@@ -6,14 +6,14 @@
  * @last Modified time: 2023-10-26 15:07:23
  */
 
-import type { InitThree } from '.';
 import { ANIMATION } from './constant';
+import { PersonModel } from './person-model';
 
 /**
  * 切换动画
  * @param {number|string} name
  */
-export function switchAction(this: InitThree, name: number | string): void {
+export function switchAction(this: PersonModel, name: number | string): void {
   let animation;
   if (typeof name === 'string') {
     animation = this.personModel?.animations.find(

@@ -67,29 +67,31 @@ export function unloadModel(this: InitThree): void {
   // if (this.gui && this.gui.destroy) this.gui.destroy();
 
   // 是否场景模型资源
-  this.sceneModel?.scene.traverse(disposeResource);
+  this.personModelInstance.sceneModelInstance?.sceneModel?.scene.traverse(
+    disposeResource
+  );
 
   // 释放场景内资源
   this.scene!.traverse(disposeResource);
 
   // 释放角色模型资源，如果有的话（释放资源了，视图还是可以看见，因为没有 remove 删除）
-  if (this.personModel) {
-    this.personModel.scene.traverse(disposeResource);
+  if (this.personModelInstance) {
+    this.personModelInstance.personModel?.scene.traverse(disposeResource);
   }
 
   // 删除角色模型，如果有的话
-  if (this.scene && this.personModel?.scene)
-    this.scene?.remove(this.personModel.scene);
+  if (this.scene && this.personModelInstance.personModel?.scene)
+    this.scene?.remove(this.personModelInstance.personModel.scene);
   // 清除对场景的引用
   this.scene = null;
 
   // 停止所有动作，清除对动画的引用
-  if (this.mixer) {
-    this.mixer.stopAllAction();
-    this.mixer = null;
+  if (this.personModelInstance.mixer) {
+    this.personModelInstance.mixer.stopAllAction();
+    this.personModelInstance.mixer = null;
   }
 
-  this.activeAction = null;
+  this.personModelInstance.activeAction = null;
 }
 
 const disposeResource = (object: THREE.Object3D) => {
