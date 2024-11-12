@@ -14,7 +14,6 @@ const direction = new THREE.Vector3();
  * 移动速度
  */
 const velocity = new THREE.Vector3();
-let arrowHelper: null | THREE.ArrowHelper;
 
 export class PersonModel {
   /**
@@ -60,9 +59,9 @@ export class PersonModel {
      */
     floorRayPause: boolean;
     /**
-     * 跳跃速度
+     * 滞空状态（人物没有在地板上，并且不是跳跃的情况下）
      */
-    velocity: number;
+    isInAir: boolean;
   };
   constructor() {
     this.personModel = null;
@@ -82,7 +81,7 @@ export class PersonModel {
     this.jumping = {
       isJumping: false,
       floorRayPause: false,
-      velocity: 0,
+      isInAir: false,
     };
   }
 
@@ -165,6 +164,23 @@ export class PersonModel {
   }
 
   private keyDown(this: PersonModel, event: KeyboardEvent) {
+    console.log(this.jumping.isInAir);
+
+    // 非跳跃且底部没有触碰地板的情况下（滞空）
+    if (this.jumping.isInAir) {
+      // 如果正在走路，则停止走路动画
+      if (this.isWalk) {
+        switchAction.call(this, 'Idle');
+        this.motionData = {
+          moveForward: false,
+          moveLeft: false,
+          moveBackward: false,
+          moveRight: false,
+        };
+      }
+      this.isWalk = false;
+      return;
+    }
     if (
       [
         'ArrowUp',
@@ -214,7 +230,7 @@ export class PersonModel {
           this.personModel!.scene.position.y <=
             this.sceneModelInstance.floorTopPosition
         ) {
-          this.jumping.velocity = MOTION.JUMP_VELOCITY;
+          velocity.y = MOTION.GRAVITY_VELOCITY;
           this.jumping.isJumping = true; // 设置跳跃状态
           this.jumping.floorRayPause = true;
         }
@@ -223,6 +239,9 @@ export class PersonModel {
   }
 
   private keyUp(this: PersonModel, event: KeyboardEvent) {
+    // 非跳跃且底部没有触碰地板的情况下（滞空）
+    if (this.jumping.isInAir) return;
+
     if (
       [
         'ArrowUp',
@@ -292,35 +311,6 @@ export class PersonModel {
       // 更新边界框
       this.boundingBox!.setFromObject(this.personModel.scene);
 
-      // 更新底部射线
-      this.sceneModelInstance.floorRaster!.ray.origin.copy(
-        this.personModel.scene.position
-          .clone()
-          .setY(position.y + RADIAL.FLOOR_RAY_ORIGIN_HEIGHT)
-      );
-      this.sceneModelInstance.floorRaster!.params.Line.threshold =
-        RADIAL.THRESHOLD;
-      this.sceneModelInstance.floorRaster!.far = RADIAL.FAR;
-      // 更新射线 end ----------------------
-
-      // 辅助射线线
-      if (arrowHelper) that.scene?.remove(arrowHelper);
-      // 创建一个ArrowHelper来可视化射线
-      arrowHelper = new THREE.ArrowHelper(
-        this.sceneModelInstance.floorRaster!.ray.direction, // 射线的方向
-        this.sceneModelInstance.floorRaster!.ray.origin, // 射线的起点
-        this.sceneModelInstance.floorRaster!.far, // 射线的长度
-        0xff0000 // 射线的颜色，这里使用红色
-      );
-      that.scene?.add(arrowHelper!);
-
-      // 发送人物垂直射线，使其人物一直在地板上
-      const intersections =
-        this.sceneModelInstance.floorRaster!.intersectObjects(
-          this.sceneModelInstance.floorMesh,
-          false
-        );
-
       // 移动摩擦
       velocity.x -= velocity.x * 1 * delta;
       velocity.z -= velocity.z * 1 * delta;
@@ -340,46 +330,34 @@ export class PersonModel {
       if (this.motionData.moveLeft || this.motionData.moveRight)
         velocity.x -= direction.x * 10 * delta;
 
-      position.x += velocity.x * delta;
-      position.z += velocity.z * delta;
-
-      const onObject = intersections.length > 0;
-
-      // 设置人物模型 Y 位置
-      if (onObject === true) {
-        if (intersections[0]?.distance) {
-          const offsetHeight =
-            intersections[0].distance - RADIAL.FLOOR_RAY_ORIGIN_HEIGHT;
-
-          // 设置地板位置数据
-          this.sceneModelInstance.floorTopPosition = position.y - offsetHeight;
-        }
-      }
+      position.x += velocity.x * delta * MOTION.MOVE_SPEED;
+      position.z += velocity.z * delta * MOTION.MOVE_SPEED;
 
       // 确保相机始终看向模型
       that.controls?.target.copy(position);
       that.controls?.update();
 
-      if (position.y < this.sceneModelInstance.floorTopPosition) {
-        velocity.y = 0;
-        position.y = this.sceneModelInstance.floorTopPosition;
-      }
+      this.sceneModelInstance.animate(that);
 
       if (this.jumping.isJumping) {
-        this.jumping.velocity +=
-          MOTION.JUMP_GRAVITY * delta * MOTION.JUMP_ACCELERATION;
-        this.personModel!.scene.position.y += this.jumping.velocity * delta;
-        // 检查是否落地
-        if (
-          this.personModel!.scene.position.y <=
-          this.sceneModelInstance.floorTopPosition
-        ) {
-          this.jumping.isJumping = false;
-          this.jumping.floorRayPause = false;
-          this.jumping.velocity = 0;
-          this.personModel!.scene.position.y =
-            this.sceneModelInstance.floorTopPosition;
-        }
+        // 设置滞空 false
+        this.jumping.isInAir = false;
+      } else {
+        // 设置滞空
+        this.jumping.isInAir = !this.sceneModelInstance.floorRayCollision;
+      }
+      // 使人物模型一直往下掉，同时在点击跳跃的时候更改 velocity 值
+      velocity.y -= MOTION.GRAVITY * delta;
+      position.y += velocity.y * delta;
+
+      // 检查是否落地， 同时在跳跃人物位置小于地板位置时会关闭跳跃状态
+      if (
+        position.y <= this.sceneModelInstance.floorTopPosition &&
+        !this.jumping.isInAir
+      ) {
+        this.jumping.isJumping = false;
+        this.jumping.floorRayPause = false;
+        position.y = this.sceneModelInstance.floorTopPosition;
       }
     }
 
