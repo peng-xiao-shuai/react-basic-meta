@@ -9,6 +9,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons';
 import { unloadModel } from './other';
 import { PersonModel } from './person-model';
+import { GUI } from './gui';
+import { MOTION } from './constant';
 
 interface InitThreeParams {
   id: string;
@@ -35,6 +37,10 @@ export class InitThree {
    * 分辨率
    */
   devicePixelRatio: number;
+  /**
+   * gui 实例
+   */
+  gui: GUI;
   /**
    * 是否碰撞
    */
@@ -67,9 +73,10 @@ export class InitThree {
     this.clock = new THREE.Clock();
     this.devicePixelRatio = window.devicePixelRatio || 1;
     // this.isCollision = false;
-    // 创建一个 GUI
-    // this.gui = new dat.GUI()
     this.personModelInstance = new PersonModel();
+
+    // 创建一个 GUI
+    this.gui = GUI.getInstance();
 
     this.updateSize = () => {
       const width = window.innerWidth;
@@ -120,6 +127,8 @@ export class InitThree {
     // this.controls.enableDamping = false
     // this.controls.dampingFactor = 0.05
     this.personModelInstance.render(this);
+
+    this.guiInit();
     this.resize();
     this.render();
   }
@@ -127,8 +136,18 @@ export class InitThree {
     window.addEventListener('resize', this.updateSize);
   }
 
+  guiInit() {
+    // 添加一个文件夹
+    const folder = this.gui.addFolder('运动');
+    folder.open(); // 可选：默认展开文件夹
+    // 在文件夹中添加控制器
+    folder.add(MOTION, 'GRAVITY', 1, 20, 1).name('重力');
+    folder.add(MOTION, 'GRAVITY_VELOCITY', 1, 20, 1).name('重力速度');
+  }
+
   unload() {
     unloadModel.call(this);
+    this.gui.destroy();
     this.container.removeChild(this.renderer.domElement);
   }
 

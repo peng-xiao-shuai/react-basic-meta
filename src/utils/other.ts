@@ -63,9 +63,6 @@ export function unloadModel(this: InitThree): void {
 
   window.removeEventListener('resize', this.updateSize);
 
-  // 销毁 GUI（如果有的话）
-  // if (this.gui && this.gui.destroy) this.gui.destroy();
-
   // 是否场景模型资源
   this.personModelInstance.sceneModelInstance?.sceneModel?.scene.traverse(
     disposeResource
