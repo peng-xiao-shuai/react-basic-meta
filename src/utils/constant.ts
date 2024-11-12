@@ -4,34 +4,24 @@
 export const MOTION = {
   /**
    * 移动速度
+   * @default 2
    */
-  MOVE_SPEED: 0.5,
+  MOVE_SPEED: 2,
   /**
    * 转向速度
    */
   STEERING_SPEED: 0.2,
 
   /**
-   * 重力加速度
+   * 越大重力越大
+   * @default 10
    */
-  GRAVITY: 9,
+  GRAVITY: 10,
   /**
-   * 初始速度
+   * 重力速度。越大跳跃越高
+   * @default 10
    */
-  VELOCITY: 0,
-
-  /**
-   * 跳跃重力。越大重力越小
-   */
-  JUMP_GRAVITY: -5,
-  /**
-   * 跳跃速度。越大跳跃越高
-   */
-  JUMP_VELOCITY: 18,
-  /**
-   * 跳跃加速度
-   */
-  JUMP_ACCELERATION: 5,
+  GRAVITY_VELOCITY: 10,
 };
 
 /**
@@ -55,7 +45,7 @@ export const RADIAL = {
   /**
    * 辅助射线初始长度
    */
-  FAR: 10,
+  FAR: 100,
   /**
    * 辅助射线宽度
    */
