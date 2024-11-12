@@ -2,7 +2,9 @@ import { GLTF } from 'three/addons';
 import * as THREE from 'three';
 import { loadModel } from './other';
 import { InitThree } from '.';
+import { RADIAL } from './constant';
 
+let arrowHelper: null | THREE.ArrowHelper;
 /**
  * 地板场景数据
  */
@@ -32,10 +34,11 @@ export class SceneModel {
    * 地板位置 =》 起跳位置
    */
   floorTopPosition: number;
-  // /**
-  //  * 跳跃更新函数
-  //  */
-  // updateJump: () => void;
+  /**
+   * 底部射线是否碰撞
+   */
+  floorRayCollision: boolean;
+
   constructor() {
     this.sceneModel = null;
     this.obstacleModel = null;
@@ -43,6 +46,7 @@ export class SceneModel {
     this.floorRaster = null;
     this.collisionMesh = [];
     this.floorTopPosition = 0;
+    this.floorRayCollision = false;
   }
 
   async loadScene() {
@@ -90,6 +94,48 @@ export class SceneModel {
     } catch (err) {
       console.error(err);
       throw new Error(err as string);
+    }
+  }
+
+  animate(that: InitThree) {
+    // 更新底部射线
+    this.floorRaster!.ray.origin.copy(
+      that.personModelInstance
+        .personModel!.scene.position.clone()
+        .setY(
+          that.personModelInstance.personModel!.scene.position.y +
+            RADIAL.FLOOR_RAY_ORIGIN_HEIGHT
+        )
+    );
+    this.floorRaster!.params.Line.threshold = RADIAL.THRESHOLD;
+    this.floorRaster!.far = RADIAL.FAR;
+    // 更新射线 end ----------------------
+
+    // 辅助射线线
+    if (arrowHelper) that.scene?.remove(arrowHelper);
+    // 创建一个ArrowHelper来可视化射线
+    arrowHelper = new THREE.ArrowHelper(
+      this.floorRaster!.ray.direction, // 射线的方向
+      this.floorRaster!.ray.origin, // 射线的起点
+      this.floorRaster!.far, // 射线的长度
+      0xff0000 // 射线的颜色，这里使用红色
+    );
+    that.scene?.add(arrowHelper!);
+
+    // 发送人物垂直射线，使其人物一直在地板上
+    const intersections = this.floorRaster!.intersectObjects(this.floorMesh);
+    this.floorRayCollision = intersections.length > 0;
+
+    // 设置人物模型 Y 位置
+    if (this.floorRayCollision === true) {
+      if (intersections[0]?.distance) {
+        const offsetHeight =
+          intersections[0].distance - RADIAL.FLOOR_RAY_ORIGIN_HEIGHT;
+
+        // 设置地板位置数据
+        this.floorTopPosition =
+          that.personModelInstance.personModel!.scene.position.y - offsetHeight;
+      }
     }
   }
 }
