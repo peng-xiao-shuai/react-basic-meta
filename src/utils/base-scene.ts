@@ -92,7 +92,7 @@ export class BaseScene {
     this.controls.minPolarAngle = Math.PI / 3;
     this.controls.maxDistance = 30;
     this.controls.minDistance = 25;
-
+    this.controls.panSpeed = 7;
     window.addEventListener('resize', this.updateSize);
   }
 
