@@ -11,6 +11,8 @@ import { getKeyDirection, walk } from './action';
  */
 const velocity = new THREE.Vector3();
 
+const keysMap = new Map();
+
 export class PersonModel {
   /**
    * 人物模型包含动画数据
@@ -191,17 +193,19 @@ export class PersonModel {
         'KeyA',
         'KeyS',
         'KeyD',
-      ].includes(event.code) &&
-      !this.isWalk
+      ].includes(event.code)
     ) {
-      this.isWalk = true;
+      keysMap.set(event.code, true);
+      if (!this.isWalk) {
+        this.isWalk = true;
+        switchAction.call(this, 'Walking');
+      }
 
       // mixer = startAnimation(
       //   playerMesh,
       //   animations,
       //   'walk' // animationName，这里是"Run"
       // )
-      switchAction.call(this, 'Walking');
     }
     switch (event.code) {
       case 'ArrowUp':
@@ -254,8 +258,12 @@ export class PersonModel {
         'KeyD',
       ].includes(event.code)
     ) {
-      this.isWalk = false;
-      switchAction.call(this, 'Idle');
+      keysMap.delete(event.code);
+
+      if (keysMap.size === 0) {
+        this.isWalk = false;
+        switchAction.call(this, 'Idle');
+      }
     }
     switch (event.code) {
       case 'ArrowUp':
