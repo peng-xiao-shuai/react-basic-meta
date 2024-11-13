@@ -22,6 +22,12 @@ export const MOTION = {
    * @default 10
    */
   GRAVITY_VELOCITY: 10,
+
+  /**
+   * 平滑度，越小越平滑 不能 <= 0
+   * @default 0.1
+   */
+  HEIGHT_SMOOTH_FACTOR: 0.1,
 };
 
 /**
