@@ -9,9 +9,9 @@ export const MOTION = {
   MOVE_SPEED: 10,
   /**
    * 摩擦力
-   * @default 4
+   * @default 3
    */
-  FRICTION: 4,
+  FRICTION: 3,
   /**
    * 转向速度
    */
