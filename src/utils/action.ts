@@ -6,8 +6,9 @@
  * @last Modified time: 2023-10-26 15:06:34
  */
 import * as THREE from 'three';
-import type { InitThree } from '.';
 import { MOTION } from './constant';
+import { PersonModel } from './person-model';
+import { BaseScene } from './base-scene';
 
 /**
  * 根据按键 a、s、d 获取转向方向
@@ -15,7 +16,7 @@ import { MOTION } from './constant';
  * @returns {THREE.Vector3} cameraDirection。 walk 函数入参
  */
 export function getKeyDirection(
-  this: InitThree,
+  this: PersonModel,
   key: 'w' | 'a' | 's' | 'd'
 ): THREE.Vector3 {
   // -Math.PI / 2 是 -90° 的弧度表示
@@ -26,7 +27,9 @@ export function getKeyDirection(
     d: -Math.PI / 2,
   }[key];
 
-  const cameraDirection = this.camera.getWorldDirection(new THREE.Vector3());
+  const cameraDirection = BaseScene.getInstance().camera.getWorldDirection(
+    new THREE.Vector3()
+  );
 
   // 创建一个旋转矩阵，使其在Y轴上旋转-90°
   const quaternion = new THREE.Quaternion();
@@ -43,7 +46,7 @@ export function getKeyDirection(
  * @param {THREE.Vector3} cameraDirection
  * @see https://codepen.io/cdeep/full/QWMWyYW 参考
  */
-export function walk(this: InitThree, cameraDirection: THREE.Vector3): void {
+export function walk(this: PersonModel, cameraDirection: THREE.Vector3): void {
   const tempModelVector = new THREE.Vector3();
   const xAxis = new THREE.Vector3(1, 0, 0);
 
@@ -51,9 +54,7 @@ export function walk(this: InitThree, cameraDirection: THREE.Vector3): void {
   const cD = cameraDirection.setY(0).normalize();
 
   // 获取玩家在X-Z平面上的方向，与相机进行比较
-  this.personModelInstance.personModel?.scene.getWorldDirection(
-    tempModelVector
-  );
+  this.personModel?.scene.getWorldDirection(tempModelVector);
   const playerDirection = tempModelVector.setY(0).normalize();
 
   // 获取到x轴的角度
@@ -78,7 +79,7 @@ export function walk(this: InitThree, cameraDirection: THREE.Vector3): void {
   }
 
   // 旋转模型面向相机的方向 MOTION.STEERING_SPEED 控制转向速度。越大越快
-  this.personModelInstance.personModel?.scene.rotateY(
+  this.personModel?.scene.rotateY(
     Math.max(
       -MOTION.STEERING_SPEED,
       Math.min(sanitisedAngle, MOTION.STEERING_SPEED)
