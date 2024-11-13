@@ -2,7 +2,7 @@ import { GLTF } from 'three/addons';
 import * as THREE from 'three';
 import { loadModel } from './other';
 import { InitThree } from '.';
-import { RADIAL } from './constant';
+import { MOTION, RADIAL } from './constant';
 
 let arrowHelper: null | THREE.ArrowHelper;
 /**
@@ -132,9 +132,12 @@ export class SceneModel {
         const offsetHeight =
           intersections[0].distance - RADIAL.FLOOR_RAY_ORIGIN_HEIGHT;
 
-        // 设置地板位置数据
-        this.floorTopPosition =
-          that.personModelInstance.personModel!.scene.position.y - offsetHeight;
+        // 重要：平滑过渡设置地板位置数据
+        this.floorTopPosition = THREE.MathUtils.lerp(
+          this.floorTopPosition,
+          that.personModelInstance.personModel!.scene.position.y - offsetHeight,
+          MOTION.HEIGHT_SMOOTH_FACTOR
+        );
       }
     }
   }
