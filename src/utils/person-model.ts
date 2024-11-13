@@ -5,11 +5,7 @@ import { SceneModel } from './scene-model';
 import { InitThree } from '.';
 import { createRaycaster, loadModel } from './other';
 import { switchAction } from './animation';
-
-/**
- * 移动方向
- */
-const direction = new THREE.Vector3();
+import { getKeyDirection, walk } from './action';
 /**
  * 移动速度
  */
@@ -63,6 +59,8 @@ export class PersonModel {
      */
     isInAir: boolean;
   };
+  // 添加新属性
+  axesHelper: THREE.AxesHelper | null;
   constructor() {
     this.personModel = null;
     this.isWalk = false;
@@ -83,6 +81,8 @@ export class PersonModel {
       floorRayPause: false,
       isInAir: false,
     };
+
+    this.axesHelper = null;
   }
 
   /**
@@ -286,7 +286,10 @@ export class PersonModel {
       await this.sceneModelInstance.render(that);
 
       const personMesh = this.personModel!.scene;
+      // 添加 AxesHelper，参数 5 表示轴线长度
+      this.axesHelper = new THREE.AxesHelper(5);
 
+      personMesh.add(this.axesHelper);
       that.scene?.add(this.boxHelper!);
       that.scene?.add(personMesh);
 
@@ -312,26 +315,23 @@ export class PersonModel {
       this.boundingBox!.setFromObject(this.personModel.scene);
 
       // 移动摩擦
-      velocity.x -= velocity.x * 1 * delta;
       velocity.z -= velocity.z * 1 * delta;
       velocity.y -= 0.8 * 10 * delta;
 
-      // 移动方向
-      direction.z =
-        Number(this.motionData.moveBackward) -
-        Number(this.motionData.moveForward);
-      direction.x =
-        Number(this.motionData.moveRight) - Number(this.motionData.moveLeft);
-      direction.normalize(); // this ensures consistent movements in all directions
+      // // 添加持续转向逻辑
+      if (this.isWalk) {
+        let key: 'w' | 'a' | 's' | 'd' = 'w';
+        if (this.motionData.moveForward) key = 'w';
+        if (this.motionData.moveLeft) key = 'a';
+        if (this.motionData.moveBackward) key = 's';
+        if (this.motionData.moveRight) key = 'd';
 
-      // 移动的范围
-      if (this.motionData.moveForward || this.motionData.moveBackward)
-        velocity.z -= direction.z * 10 * delta;
-      if (this.motionData.moveLeft || this.motionData.moveRight)
-        velocity.x -= direction.x * 10 * delta;
+        velocity.z -= -1 * 10 * delta;
 
-      position.x += velocity.x * delta * MOTION.MOVE_SPEED;
-      position.z += velocity.z * delta * MOTION.MOVE_SPEED;
+        const cameraDirection = getKeyDirection.call(this, key);
+        walk.call(this, cameraDirection);
+      }
+      this.personModel.scene.translateZ(velocity.z * delta * MOTION.MOVE_SPEED);
 
       // 确保相机始终看向模型
       that.controls?.target.copy(position);
