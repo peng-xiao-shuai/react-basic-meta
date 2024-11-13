@@ -23,6 +23,7 @@ export class PersonModel {
     moveLeft: boolean;
     moveBackward: boolean;
     moveRight: boolean;
+    run: boolean;
   };
   /**
    * 是否走路动画
@@ -71,6 +72,7 @@ export class PersonModel {
       moveLeft: false,
       moveBackward: false,
       moveRight: false,
+      run: false,
     };
     this.boundingBox = null;
     this.boxHelper = null;
@@ -166,8 +168,6 @@ export class PersonModel {
   }
 
   private keyDown(this: PersonModel, event: KeyboardEvent) {
-    console.log(this.jumping.isInAir);
-
     // 非跳跃且底部没有触碰地板的情况下（滞空）
     if (this.jumping.isInAir) {
       // 如果正在走路，则停止走路动画
@@ -178,6 +178,7 @@ export class PersonModel {
           moveLeft: false,
           moveBackward: false,
           moveRight: false,
+          run: false,
         };
       }
       this.isWalk = false;
@@ -193,19 +194,16 @@ export class PersonModel {
         'KeyA',
         'KeyS',
         'KeyD',
+        'ShiftLeft',
+        'ShiftRight',
       ].includes(event.code)
     ) {
       keysMap.set(event.code, true);
       if (!this.isWalk) {
         this.isWalk = true;
+
         switchAction.call(this, 'Walking');
       }
-
-      // mixer = startAnimation(
-      //   playerMesh,
-      //   animations,
-      //   'walk' // animationName，这里是"Run"
-      // )
     }
     switch (event.code) {
       case 'ArrowUp':
@@ -226,6 +224,14 @@ export class PersonModel {
       case 'ArrowRight':
       case 'KeyD':
         this.motionData.moveRight = true;
+        break;
+
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        if (!this.motionData.run) {
+          this.motionData.run = true;
+          switchAction.call(this, 'Running');
+        }
         break;
 
       case 'Space':
@@ -256,6 +262,8 @@ export class PersonModel {
         'KeyA',
         'KeyS',
         'KeyD',
+        'ShiftLeft',
+        'ShiftRight',
       ].includes(event.code)
     ) {
       keysMap.delete(event.code);
@@ -284,6 +292,12 @@ export class PersonModel {
       case 'ArrowRight':
       case 'KeyD':
         this.motionData.moveRight = false;
+        break;
+
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.motionData.run = false;
+        switchAction.call(this, 'Walking');
         break;
     }
   }
@@ -334,12 +348,14 @@ export class PersonModel {
         if (this.motionData.moveBackward) key = 's';
         if (this.motionData.moveRight) key = 'd';
 
-        velocity.z -= -1 * 10 * delta;
+        velocity.z -= -1 * MOTION.MOVE_SPEED * delta;
 
         const cameraDirection = getKeyDirection.call(this, key);
         walk.call(this, cameraDirection);
       }
-      this.personModel.scene.translateZ(velocity.z * delta * MOTION.MOVE_SPEED);
+      this.personModel.scene.translateZ(
+        velocity.z * delta * MOTION.MOVE_SPEED * (this.motionData.run ? 2 : 1)
+      );
 
       // 确保相机始终看向模型
       that.controls?.target.set(
