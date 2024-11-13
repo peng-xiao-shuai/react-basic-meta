@@ -60,7 +60,10 @@ export class InitThree extends BaseScene {
     folder.open(); // 可选：默认展开文件夹
     // 在文件夹中添加控制器
     folder.add(MOTION, 'GRAVITY', 1, 20, 1).name('重力');
-    folder.add(MOTION, 'GRAVITY_VELOCITY', 1, 20, 1).name('重力速度');
+    folder.add(MOTION, 'JUMP_HEIGHT', 1, 20, 1).name('跳跃高度');
+    folder.add(MOTION, 'JUMP_VELOCITY', 1, 20, 1).name('跳跃加速度');
+    folder.add(MOTION, 'MOVE_SPEED', 1, 20, 1).name('移动速度');
+    folder.add(MOTION, 'FRICTION', 1, 20, 1).name('摩擦力');
   }
 
   unload() {

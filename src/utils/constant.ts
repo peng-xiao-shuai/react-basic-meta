@@ -4,13 +4,18 @@
 export const MOTION = {
   /**
    * 移动速度
-   * @default 2
+   * @default 10
    */
-  MOVE_SPEED: 2,
+  MOVE_SPEED: 10,
+  /**
+   * 摩擦力
+   * @default 4
+   */
+  FRICTION: 4,
   /**
    * 转向速度
    */
-  STEERING_SPEED: 0.2,
+  STEERING_SPEED: 0.1,
 
   /**
    * 越大重力越大
@@ -18,10 +23,15 @@ export const MOTION = {
    */
   GRAVITY: 10,
   /**
-   * 重力速度。越大跳跃越高
-   * @default 10
+   * 越大跳跃越高
+   * @default 15
    */
-  GRAVITY_VELOCITY: 10,
+  JUMP_HEIGHT: 15,
+  /**
+   * 跳跃加速度 数值越高跳跃过程时间越短
+   * @default 3
+   */
+  JUMP_VELOCITY: 3,
 
   /**
    * 平滑度，越小越平滑 不能 <= 0
@@ -60,4 +70,12 @@ export const RADIAL = {
    * 射线离物体多少距离无法前进，需要更具模型大小设置
    */
   MIN_DISTANCE_TO_OBJECT: 3,
+};
+
+export const CONTROLS = {
+  /**
+   * 控制器额外高度（尽量大于人物高度）
+   * @default 5
+   */
+  EXTRA_HEIGHT: 5,
 };

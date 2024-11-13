@@ -1,5 +1,5 @@
 import { GLTF } from 'three/addons';
-import { MOTION, RADIAL } from './constant';
+import { CONTROLS, MOTION, RADIAL } from './constant';
 import * as THREE from 'three';
 import { SceneModel } from './scene-model';
 import { InitThree } from '.';
@@ -230,7 +230,7 @@ export class PersonModel {
           this.personModel!.scene.position.y <=
             this.sceneModelInstance.floorTopPosition
         ) {
-          velocity.y = MOTION.GRAVITY_VELOCITY;
+          velocity.y = MOTION.JUMP_HEIGHT;
           this.jumping.isJumping = true; // 设置跳跃状态
           this.jumping.floorRayPause = true;
         }
@@ -309,13 +309,13 @@ export class PersonModel {
   animate(that: InitThree) {
     const delta = that.clock.getDelta();
 
-    if (this.personModel) {
+    if (this.personModel && this.sceneModelInstance.floorMesh.length) {
       const { position } = this.personModel.scene;
       // 更新边界框
       this.boundingBox!.setFromObject(this.personModel.scene);
 
       // 移动摩擦
-      velocity.z -= velocity.z * 1 * delta;
+      velocity.z -= velocity.z * MOTION.FRICTION * delta;
       velocity.y -= 0.8 * 10 * delta;
 
       // // 添加持续转向逻辑
@@ -334,7 +334,11 @@ export class PersonModel {
       this.personModel.scene.translateZ(velocity.z * delta * MOTION.MOVE_SPEED);
 
       // 确保相机始终看向模型
-      that.controls?.target.copy(position);
+      that.controls?.target.set(
+        position.x,
+        this.sceneModelInstance.floorTopPosition + CONTROLS.EXTRA_HEIGHT,
+        position.z
+      );
       that.controls?.update();
 
       this.sceneModelInstance.animate(that);
@@ -347,8 +351,8 @@ export class PersonModel {
         this.jumping.isInAir = !this.sceneModelInstance.floorRayCollision;
       }
       // 使人物模型一直往下掉，同时在点击跳跃的时候更改 velocity 值
-      velocity.y -= MOTION.GRAVITY * delta;
-      position.y += velocity.y * delta;
+      velocity.y -= MOTION.GRAVITY * delta * MOTION.JUMP_VELOCITY;
+      position.y += velocity.y * delta * MOTION.JUMP_VELOCITY;
 
       // 检查是否落地， 同时在跳跃人物位置小于地板位置时会关闭跳跃状态
       if (
