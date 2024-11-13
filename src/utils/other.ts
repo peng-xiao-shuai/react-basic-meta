@@ -58,11 +58,6 @@ export const loadModel = (
  * 销毁模型。window.addEventListener 监听事件并不会销毁
  */
 export function unloadModel(this: InitThree): void {
-  // 清除 requestAnimationFrame
-  cancelAnimationFrame(this.frameId);
-
-  window.removeEventListener('resize', this.updateSize);
-
   // 是否场景模型资源
   this.personModelInstance.sceneModelInstance?.sceneModel?.scene.traverse(
     disposeResource
@@ -91,7 +86,7 @@ export function unloadModel(this: InitThree): void {
   this.personModelInstance.activeAction = null;
 }
 
-const disposeResource = (object: THREE.Object3D) => {
+export const disposeResource = (object: THREE.Object3D) => {
   const mesh = object as THREE.Mesh;
   if (mesh.isMesh) {
     mesh.geometry.dispose();
